@@ -1,7 +1,10 @@
 namespace server;
+
+using System.Text;
 using shared;
 public class Router
 {
+    public static int nextId = 0;
     public static HttpResponse Handle(HttpRequest request, Dictionary<int, string> messages)
     {
         if (request.Method == "GET")
@@ -22,8 +25,12 @@ public class Router
         }
         else if (request.Method == "POST")
         {
-            if (request.Path.Contains("/api/messages/"))
+            if (request.Path.Contains("/api/messages"))
             {
+                string body = Encoding.UTF8.GetString(request.Body ?? Array.Empty<byte>());
+                nextId++;
+                messages.Add(nextId, body);
+                return HttpResponseWriter.Post(nextId);
             }
         }
         else if (request.Method == "PUT")

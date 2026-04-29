@@ -4,13 +4,26 @@ namespace shared;
 
 public class HttpRequestWriter
 {
-    public static async Task<string> WriteRequest(HttpRequest req)
+    public static byte[] ToBytes(HttpRequest request, string host)
     {
-        StringBuilder sb = new StringBuilder();
-        sb.Append($"{req.Method} {req.Path} {req.Version}\r\n");
+        var sb = new StringBuilder();
+        sb.Append($"{request.Method} {request.Path} {request.Version}\r\n");
         sb.Append($"Host: {host}\r\n");
-        sb.Append("Connection: close\r\n");
+        if (request.Body != null && request.Body.Length > 0)
+        {
+            if (!request.Headers.ContainsKey("Content-Length"))
+            {
+                sb.Append($"Content-Length: {request.Body.Length}\r\n");
+            }
+        }
+        foreach (var pair in request.Headers)
+        {
+            sb.Append($"{pair.Key}: {pair.Value}\r\n");
+        }
         sb.Append("\r\n");
-        return sb.ToString();
+        byte[] headers = Encoding.UTF8.GetBytes(sb.ToString());
+        return request.Body != null
+            ? headers.Concat(request.Body).ToArray()
+            : headers;
     }
 }

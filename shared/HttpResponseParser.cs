@@ -2,9 +2,9 @@ using System.Text;
 
 namespace shared;
 
-public record HttpRequestParser
+public record HttpResponseParser
 {
-    public static HttpRequest ParseRequest(string raw)
+    public static HttpResponse ParseResponse(string raw)
     {
         int separator = raw.IndexOf("\r\n\r\n");
         string headers = raw.Substring(0, separator);
@@ -18,11 +18,11 @@ public record HttpRequestParser
             throw new Exception("Ligne de requete invalide");
         }
 
-        HttpRequest response = new HttpRequest
+        HttpResponse response = new HttpResponse
         {
-            Method = parts[0],
-            Path = parts[1],
-            Version = parts[2]
+            Version = parts[0],
+            StatusCode = Convert.ToInt32(parts[1]),
+            ReasonPhrase = parts[2]
         };
         for (int i = 0; i < lines.Length - 1; i++)
         {

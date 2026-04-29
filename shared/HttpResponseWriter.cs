@@ -83,6 +83,20 @@ public class HttpResponseWriter
         return response;
     }
 
+    public static HttpResponse Post(int id)
+    {
+        byte[] body = Encoding.UTF8.GetBytes($"Element created with id : {id}");
+        var response = new HttpResponse
+        {
+            StatusCode = 201,
+            ReasonPhrase = "Created",
+            Body = body
+        }; 
+        response.Headers["Content-Type"] = "application/json; charset=utf-8";
+        response.Headers["Content-Length"] = body.Length.ToString();
+        response.Headers["Connection"] = "close";
+        return response;
+    }
     public static HttpResponse NotFound()
     {
         byte[] body = Encoding.UTF8.GetBytes("Not Found");

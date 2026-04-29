@@ -16,6 +16,6 @@ public class Utils
             jsonItems.Add(MessageToJson(message.Key, message.Value));
         }
 
-        return "[" + string.Join(", ", jsonItems) + "]";
+        return string.Join(", ", jsonItems);
     }
 }
