@@ -15,20 +15,17 @@ public class Server
         CancellationTokenSource cts = new CancellationTokenSource();
         Console.Write("Départ du serveur, écire exit pour quitter : ");
 
-        Task serverTask = HandleServer(cts.Token, listener, messages);
-        await Task.Run(() =>
+        _ = HandleServer(cts.Token, listener, messages);
+        while (true)
         {
-            while (true)
+            string? req = Console.ReadLine();
+            if (req == "quit" || req == "exit")
             {
-                string? req = Console.ReadLine();
-                if (req == "quit" || req == "exit")
-                {
-                    cts.Cancel();
-                    Console.WriteLine("Fermeture du serveur...");
-                    break;
-                }
+                cts.Cancel();
+                Console.WriteLine("Fermeture du serveur...");
+                break;
             }
-        });
+        }
     }
 
     public static async Task HandleServer(CancellationToken ct, TcpListener listener, Dictionary<int, string> messages)
@@ -38,9 +35,11 @@ public class Server
             TcpClient client = await listener.AcceptTcpClientAsync();
             NetworkStream stream = client.GetStream();
             string raw = await ReadHttpHeadersAsync(stream);
+            Console.WriteLine($"DEBUG: Octets reçus {raw}");
             HttpRequest request = HttpRequestParser.ParseRequest(raw);
             HttpResponse response = Router.Handle(request, messages);
             await stream.WriteAsync(HttpResponseWriter.ToBytes(response));
+            await stream.FlushAsync();
             client.Close();
             stream.Close();
         }
