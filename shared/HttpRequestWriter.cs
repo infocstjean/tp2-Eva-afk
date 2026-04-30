@@ -16,10 +16,12 @@ public class HttpRequestWriter
                 sb.Append($"Content-Length: {request.Body.Length}\r\n");
             }
         }
+
         foreach (var pair in request.Headers)
         {
             sb.Append($"{pair.Key}: {pair.Value}\r\n");
         }
+
         sb.Append("\r\n");
         byte[] headers = Encoding.UTF8.GetBytes(sb.ToString());
         return request.Body != null

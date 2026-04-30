@@ -2,8 +2,15 @@ namespace shared;
 
 public static class HtmlFileProvider
 {
+    private static readonly string Path = "page.html";
+
     public static string SendHtmlPage()
     {
-        return File.ReadAllText("/server/page.html");
+        if (!File.Exists(Path))
+        {
+            return "<html><body>Fichier non trouvé</body></html>";
+        }
+
+        return File.ReadAllText(Path);
     }
 }

@@ -1,81 +1,87 @@
 namespace server;
 
-using System.Runtime.InteropServices;
 using System.Text;
 using shared;
 
 public class Router
 {
-    public static int nextId = 0;
+    private static readonly object Gate = new();
+    public static int NextId;
 
     public static HttpResponse Handle(HttpRequest request, Dictionary<int, string> messages)
     {
-        try
+        lock (Gate)
         {
-            
-        if (request.Method == "GET")
-        {
-            if (request.Path == "/")
+            try
             {
-                return HttpResponseWriter.GetHtml(HtmlFileProvider.SendHtmlPage());
-            }
-            else if (request.Path == "/api/messages")
-            {
-                return HttpResponseWriter.GetListMessages(messages);
-            }
-            else if (request.Path.Contains("/api/messages/"))
-            {
-                int id = GetIdFromRequest(request);
-                if(!VerifyIdContainedInMessages(id, messages)) return HttpResponseWriter.NotFound();
-                return HttpResponseWriter.GetSingleMessage(id, messages[id]);
-            }
-        }
-        else if (request.Method == "POST")
-        {
-            if (request.Path.Contains("/api/messages"))
-            {
-                string body = Encoding.UTF8.GetString(request.Body ?? Array.Empty<byte>());
-                nextId++;
-                messages.Add(nextId, body);
-                return HttpResponseWriter.Post(nextId, messages[nextId]);
-            }
-        }
-        else if (request.Method == "PUT")
-        {
-            if (request.Path.Contains("/api/messages/"))
-            {
-                int id = GetIdFromRequest(request);
-                if(!VerifyIdContainedInMessages(id, messages)) return HttpResponseWriter.NotFound();
+                if (request.Path == "/" && request.Method != "GET")
+                {
+                    return HttpResponseWriter.MethodNotAllowed();
+                }
 
-                return HttpResponseWriter.Put(id);
-            }
-        }
-        else if (request.Method == "DELETE")
-        {
-            if (request.Path.Contains("/api/messages/"))
-            {
-                int id = GetIdFromRequest(request);
-                if(!VerifyIdContainedInMessages(id, messages)) return HttpResponseWriter.NotFound();
-                messages.Remove(id);
-                return HttpResponseWriter.Delete(id);
-            }
-        }
-        else if (request.Method == "PATCH")
-        {
-            if (request.Path.Contains("/api/messages/"))
-            {
-                int id = GetIdFromRequest(request);
-                if(!VerifyIdContainedInMessages(id, messages)) return HttpResponseWriter.NotFound();
+                if (request.Path == "/api/messages" && request.Method != "GET" && request.Method != "POST")
+                {
+                    return HttpResponseWriter.MethodNotAllowed();
+                }
 
-                return HttpResponseWriter.Patch(id);
-            }
-        }
+                if (request.Method == "GET")
+                {
+                    if (request.Path == "/")
+                    {
+                        return HttpResponseWriter.GetHtml(HtmlFileProvider.SendHtmlPage());
+                    }
+                    else if (request.Path == "/api/messages")
+                    {
+                        return HttpResponseWriter.GetListMessages(messages);
+                    }
+                    else if (request.Path.Contains("/api/messages/"))
+                    {
+                        int id = GetIdFromRequest(request);
+                        if (!VerifyIdContainedInMessages(id, messages)) return HttpResponseWriter.NotFound();
+                        return HttpResponseWriter.GetSingleMessage(id, messages[id]);
+                    }
+                }
+                else if (request.Method == "POST")
+                {
+                    if (request.Path.Equals("/api/messages"))
+                    {
+                        string body = Encoding.UTF8.GetString(request.Body ?? Array.Empty<byte>());
+                        NextId++;
+                        messages.Add(NextId, body);
+                        return HttpResponseWriter.Post(NextId, messages[NextId]);
+                    }
+                }
+                else if (request.Method == "PUT" || request.Method == "PATCH")
+                {
+                    if (request.Path.Contains("/api/messages/"))
+                    {
+                        int id = GetIdFromRequest(request);
+                        if (!VerifyIdContainedInMessages(id, messages)) return HttpResponseWriter.NotFound();
+                        string bodyChange = Encoding.UTF8.GetString(request.Body ?? Array.Empty<byte>());
+                        if (bodyChange != "")
+                        {
+                            messages[id] = bodyChange;
+                            return HttpResponseWriter.PutOrPatch(id, messages[id]);
+                        }
+                    }
+                }
+                else if (request.Method == "DELETE")
+                {
+                    if (request.Path.Contains("/api/messages/"))
+                    {
+                        int id = GetIdFromRequest(request);
+                        if (!VerifyIdContainedInMessages(id, messages)) return HttpResponseWriter.NotFound();
+                        messages.Remove(id);
+                        return HttpResponseWriter.Delete(id);
+                    }
+                }
 
-        return HttpResponseWriter.BadRequest();
-        }
-        catch (Exception)
-        {
-           return HttpResponseWriter.InternalError(); 
+                return HttpResponseWriter.BadRequest();
+            }
+            catch (Exception)
+            {
+                return HttpResponseWriter.InternalError();
+            }
         }
     }
 

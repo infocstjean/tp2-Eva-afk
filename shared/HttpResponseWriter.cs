@@ -1,9 +1,8 @@
-using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace shared;
 
-public class HttpResponseWriter
+public static class HttpResponseWriter
 {
     public static byte[] ToBytes(HttpResponse response)
     {
@@ -31,52 +30,58 @@ public class HttpResponseWriter
         response.Headers["Connection"] = "close";
         return response;
     }
+
     public static HttpResponse MethodNotAllowed()
     {
-
-        return CreateResponse(405, "Method Not Allowed", Array.Empty<byte>(), "text/plain");
+        return CreateResponse(405, "Method Not Allowed", Encoding.UTF8.GetBytes("Méthode non permise"), "text/plain");
     }
+
     public static HttpResponse NotFound()
     {
-        return CreateResponse(404, "Not Found", Array.Empty<byte>(), "text/plain");
+        return CreateResponse(404, "Not Found",
+            Encoding.UTF8.GetBytes("Message n'existe pas ou ne peut pas être trouvé"), "text/plain");
     }
+
     public static HttpResponse BadRequest()
     {
-        return CreateResponse(400, "Bad Request", Array.Empty<byte>(), "text/plain");
-
+        return CreateResponse(400, "Bad Request", Encoding.UTF8.GetBytes("Requête mal formulée"), "text/plain");
     }
+
     public static HttpResponse InternalError()
     {
-        return CreateResponse(500, "Internal Server Error", Array.Empty<byte>(), "text/plain");
-
+        return CreateResponse(500, "Internal Server Error",
+            Encoding.UTF8.GetBytes("Erreur dans le fonctionnement interne du serveur"), "text/plain");
     }
+
     public static HttpResponse Post(int id, string message)
     {
-        return CreateResponse(201, "Created", Encoding.UTF8.GetBytes($"Nouveau message: {Utils.MessageToJson(id, message)}"), "text/plain");
+        return CreateResponse(201, "Created",
+            Encoding.UTF8.GetBytes($"Nouveau message: {Utils.MessageToJson(id, message)}"), "text/plain");
     }
-    public static HttpResponse Put(int id)
+
+    public static HttpResponse PutOrPatch(int id, string message)
     {
-        return CreateResponse(200, "OK", Array.Empty<byte>(), "text/plain");
+        return CreateResponse(200, "OK", Encoding.UTF8.GetBytes($"Message modifié: {Utils.MessageToJson(id, message)}"),
+            "text/plain");
     }
+
     public static HttpResponse Delete(int id)
     {
+        return CreateResponse(204, "No Content", Encoding.UTF8.GetBytes("Suppression réussie"), "text/plain");
+    }
 
-        return CreateResponse(204, "No Content", Array.Empty<byte>(), "text/plain");
-    }
-    public static HttpResponse Patch(int id)
-    {
-        return CreateResponse(200, "OK", Array.Empty<byte>(), "text/plain");
-    }
     public static HttpResponse GetListMessages(Dictionary<int, string> messages)
     {
         string messagesJson = Utils.MessageListToJson(messages);
         return CreateResponse(200, "OK", Encoding.UTF8.GetBytes(messagesJson), "application/json");
     }
+
     public static HttpResponse GetSingleMessage(int id, string message)
     {
         string messageJson = Utils.MessageToJson(id, message);
         return CreateResponse(200, "OK", Encoding.UTF8.GetBytes(messageJson), "application/json");
     }
+
     public static HttpResponse GetHtml(string htmlContent)
     {
         return CreateResponse(200, "OK", Encoding.UTF8.GetBytes(htmlContent), "text/html");

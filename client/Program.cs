@@ -1,20 +1,20 @@
 ﻿namespace client;
 
 using System.Net.Sockets;
-using System.Reflection;
 using System.Text;
 using shared;
 
 public class Client
 {
-    private static readonly CancellationTokenSource cts = new CancellationTokenSource();
+    private static readonly CancellationTokenSource Cts = new();
+
     public static async Task Main()
     {
-        while (!cts.IsCancellationRequested)
+        while (!Cts.IsCancellationRequested)
         {
             try
             {
-                await HandleClient(cts.Token);
+                await HandleClient(Cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -27,6 +27,7 @@ public class Client
             }
         }
     }
+
     public static async Task HandleClient(CancellationToken ct)
     {
         Console.WriteLine("--- Nouvelle requête ---");
@@ -34,44 +35,58 @@ public class Client
         string? url = Console.ReadLine();
         if (url == "exit" || url == "quit")
         {
-            cts.Cancel();
+            Cts.Cancel();
             throw new OperationCanceledException();
         }
+
         Console.Write("Méthode (GET, POST, PUT, DELETE, PATCH) : ");
         string? method = Console.ReadLine()?.ToUpper();
 
         string body = "";
-        if (method =="PUT" || method =="POST" || method == "PATCH")
+        if (method == "PUT" || method == "POST" || method == "PATCH")
         {
             Console.Write("Entrez votre message : ");
             body = Console.ReadLine() ?? "";
         }
 
-        if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(method)) return;
-
-        string? cutUrl = url.Replace("http://", "");
-        int slashIndex = cutUrl.IndexOf("/");
-        string addressAndPort = cutUrl.Substring(0, slashIndex);
-        string path = cutUrl.Substring(slashIndex);
-
-        string host = addressAndPort.Trim();
-        int port = 8088;
-
-        if (addressAndPort.Contains(":"))
+        if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(method))
         {
-            string[] parts = addressAndPort.Split(':');
-            host = parts[0].Trim();
-            port = Convert.ToInt32(parts[1].Trim());
+            Console.WriteLine("URL ou méthode vide");
+            return;
         }
 
-        using TcpClient client = new TcpClient();
-        await client.ConnectAsync(host, port);
-        using NetworkStream stream = client.GetStream();
+        try
+        {
+            string cutUrl = url.Replace("http://", "");
+            int slashIndex = cutUrl.IndexOf("/");
+            string addressAndPort = cutUrl.Substring(0, slashIndex);
+            string path = cutUrl.Substring(slashIndex);
 
-        await SendRequest(url, method, path, host, stream, ct, Encoding.UTF8.GetBytes(body));
-        await ReceiveResponse(stream, ct);
+            string host = addressAndPort.Trim();
+            int port = 8088;
+
+            if (addressAndPort.Contains(":"))
+            {
+                string[] parts = addressAndPort.Split(':');
+                host = parts[0].Trim();
+                port = Convert.ToInt32(parts[1].Trim());
+            }
+
+            using TcpClient client = new TcpClient();
+            await client.ConnectAsync(host, port);
+            using NetworkStream stream = client.GetStream();
+
+            await SendRequest(url, method, path, host, stream, ct, Encoding.UTF8.GetBytes(body));
+            await ReceiveResponse(stream, ct);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            Console.WriteLine("Erreur dans le format de l'url");
+        }
     }
-    public static async Task SendRequest(string url, string method, string path, string host, NetworkStream stream, CancellationToken ct, byte[] body)
+
+    public static async Task SendRequest(string url, string method, string path, string host, NetworkStream stream,
+        CancellationToken ct, byte[] body)
     {
         HttpRequest request = new HttpRequest
         {
@@ -79,17 +94,14 @@ public class Client
             Path = path,
             Body = body
         };
-
+        request.Headers.Add("Accept", "*/*");
         byte[] byteRequest = HttpRequestWriter.ToBytes(request, host);
         await stream.WriteAsync(byteRequest);
     }
+
     public static async Task ReceiveResponse(NetworkStream stream, CancellationToken ct)
     {
-        // taille de header en http
-        byte[] bytes = new byte[8192];
-        int bytesRead = await stream.ReadAsync(bytes, 0, bytes.Length);
-        if (bytesRead == 0) return;
-        string raw = Encoding.UTF8.GetString(bytes);
+        string raw = await Utils.ReadHttpHeadersAsync(stream);
         Console.WriteLine("--- Réponse du serveur ---");
         Console.WriteLine(raw);
     }

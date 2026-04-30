@@ -29,13 +29,14 @@ public record HttpRequestParser
             string line = lines[i];
             if (line == "") continue;
             int searchedIndex = line.IndexOf(':');
-            if(i > 0)
+            if (i > 0)
             {
                 string key = line.Substring(0, searchedIndex);
                 string value = line.Substring(searchedIndex + 1);
                 response.Headers[key] = value;
             }
         }
+
         response.Body = Encoding.UTF8.GetBytes(body);
         return response;
     }

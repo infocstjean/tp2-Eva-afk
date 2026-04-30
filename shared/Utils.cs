@@ -1,3 +1,6 @@
+using System.Net.Sockets;
+using System.Text;
+
 namespace shared;
 
 public class Utils
@@ -17,5 +20,23 @@ public class Utils
         }
 
         return string.Join(", ", jsonItems);
+    }
+
+    public static async Task<string> ReadHttpHeadersAsync(NetworkStream stream)
+    {
+        byte[] buffer = new byte[1024];
+        using var ms = new MemoryStream();
+        while (true)
+        {
+            int n = await stream.ReadAsync(buffer, 0, buffer.Length);
+            if (n == 0)
+                break;
+            ms.Write(buffer, 0, n);
+            string text = Encoding.UTF8.GetString(ms.ToArray());
+            if (text.Contains("\r\n\r\n"))
+                return text;
+        }
+
+        throw new Exception("Requete HTTP incomplete");
     }
 }
