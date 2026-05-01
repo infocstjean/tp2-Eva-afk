@@ -35,14 +35,14 @@ public class Server
         {
             TcpClient client = await listener.AcceptTcpClientAsync();
             NetworkStream stream = client.GetStream();
-            string raw = await Utils.ReadHttpHeadersAsync(stream);
+            string raw = await Utils.ReadHttpHeadersAsync(stream, ct);
             Console.WriteLine("\n--- Requête du client ---");
             Console.WriteLine(raw);
             Console.Write("> ");
             HttpRequest request = HttpRequestParser.ParseRequest(raw);
             HttpResponse response = Router.Handle(request, messages);
 
-            await stream.WriteAsync(HttpResponseWriter.ToBytes(response));
+            await stream.WriteAsync(HttpResponseWriter.ToBytes(response), ct);
             await stream.FlushAsync();
 
             client.Close();

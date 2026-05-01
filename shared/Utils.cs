@@ -22,13 +22,13 @@ public class Utils
         return string.Join(", ", jsonItems);
     }
 
-    public static async Task<string> ReadHttpHeadersAsync(NetworkStream stream)
+    public static async Task<string> ReadHttpHeadersAsync(NetworkStream stream, CancellationToken  ct)
     {
         byte[] buffer = new byte[1024];
         using var ms = new MemoryStream();
         while (true)
         {
-            int n = await stream.ReadAsync(buffer, 0, buffer.Length);
+            int n = await stream.ReadAsync(buffer, 0, buffer.Length, ct);
             if (n == 0)
                 break;
             ms.Write(buffer, 0, n);

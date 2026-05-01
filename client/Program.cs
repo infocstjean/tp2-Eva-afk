@@ -6,15 +6,14 @@ using shared;
 
 public class Client
 {
-    private static readonly CancellationTokenSource Cts = new();
-
     public static async Task Main()
     {
-        while (!Cts.IsCancellationRequested)
+        CancellationTokenSource cts = new CancellationTokenSource();
+        while (!cts.IsCancellationRequested)
         {
             try
             {
-                await HandleClient(Cts.Token);
+                await HandleClient(cts);
             }
             catch (OperationCanceledException)
             {
@@ -28,14 +27,14 @@ public class Client
         }
     }
 
-    public static async Task HandleClient(CancellationToken ct)
+    public static async Task HandleClient(CancellationTokenSource cts)
     {
         Console.WriteLine("--- Nouvelle requête ---");
         Console.Write("Entrez l'URL ou exit (ex: http://localhost:8088/api/messages) : ");
         string? url = Console.ReadLine();
         if (url == "exit" || url == "quit")
         {
-            Cts.Cancel();
+            cts.Cancel();
             throw new OperationCanceledException();
         }
 
@@ -76,16 +75,20 @@ public class Client
             await client.ConnectAsync(host, port);
             using NetworkStream stream = client.GetStream();
 
-            await SendRequest(url, method, path, host, stream, ct, Encoding.UTF8.GetBytes(body));
-            await ReceiveResponse(stream, ct);
+            await SendRequest(method, path, host, stream, cts.Token, Encoding.UTF8.GetBytes(body));
+            await ReceiveResponse(stream, cts.Token);
         }
         catch (ArgumentOutOfRangeException)
         {
             Console.WriteLine("Erreur dans le format de l'url");
         }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
     }
 
-    public static async Task SendRequest(string url, string method, string path, string host, NetworkStream stream,
+    public static async Task SendRequest(string method, string path, string host, NetworkStream stream,
         CancellationToken ct, byte[] body)
     {
         HttpRequest request = new HttpRequest
@@ -96,12 +99,12 @@ public class Client
         };
         request.Headers.Add("Accept", "*/*");
         byte[] byteRequest = HttpRequestWriter.ToBytes(request, host);
-        await stream.WriteAsync(byteRequest);
+        await stream.WriteAsync(byteRequest, ct);
     }
 
     public static async Task ReceiveResponse(NetworkStream stream, CancellationToken ct)
     {
-        string raw = await Utils.ReadHttpHeadersAsync(stream);
+        string raw = await Utils.ReadHttpHeadersAsync(stream, ct);
         Console.WriteLine("--- Réponse du serveur ---");
         Console.WriteLine(raw);
     }
